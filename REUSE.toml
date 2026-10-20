@@ -1,0 +1,9 @@
+# SPDX headers: every source file carries its own. This file covers only files that
+# cannot carry a header or are documentation and configuration.
+version = 1
+
+[[annotations]]
+path = ["*.md", "**/*.md", "REUSE.toml", ".gitignore", ".gitattributes", ".github/**"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 COR Holdings, LLC"
+SPDX-License-Identifier = "Apache-2.0"

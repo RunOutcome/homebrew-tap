@@ -1,0 +1,8 @@
+# Add an ecosystem entry (gomod, npm, cargo, docker) in the same pull request that adds
+# its manifest; Dependabot reports an error for an ecosystem with no manifest.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
