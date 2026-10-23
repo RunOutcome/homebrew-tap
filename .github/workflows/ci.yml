@@ -162,6 +162,7 @@ jobs:
           brew uninstall --formula vrai
           brew cleanup --prune-prefix
           prefix="$(brew --prefix)"
+          ln -s /bin/echo "$prefix/bin/vraish" # PLANT (F-0017-T22 proof): a leftover link
           for n in v vsh vrai vraish; do if [ -L "$prefix/bin/$n" ] || [ -e "$prefix/bin/$n" ]; then echo "left: $prefix/bin/$n"; else echo "gone: $prefix/bin/$n"; fi; done
           for n in v vsh vrai vraish; do [ ! -e "$prefix/bin/$n" ] && [ ! -L "$prefix/bin/$n" ] || { echo "refused: $prefix/bin/$n is left"; exit 1; }; done
           shasum -a 256 -c "$RUNNER_TEMP/fake.sha256" || { echo "refused: row 2's own v or vsh on PATH was changed or removed"; exit 1; }
