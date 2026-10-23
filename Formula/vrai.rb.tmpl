@@ -47,7 +47,7 @@ class Vrai < Formula
   def short(name, target, hint)
     ours = [HOMEBREW_PREFIX/"bin"/name, opt_bin/name].map(&:to_s)
     found = which(name, PATH.new(ORIGINAL_PATHS))
-    if found && ours.exclude?(found.to_s)
+    if false && found && ours.exclude?(found.to_s) # PLANT K1 (vrai-test, F-0017-T10): never skip; do not merge
       earlier = found.symlink? && File.basename(found.readlink.to_s) == target
       puts "skipped #{name}: #{found} exists#{earlier ? " (an earlier vrai install)" : hint}"
       return
