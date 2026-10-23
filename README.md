@@ -7,7 +7,7 @@ Part of VRAI by VRAISON. See https://github.com/VRAISON/vrai-workspace for how t
 **Not published.** The formula is written and tested here, but it is not published until the founder approves the public release (F-0017 @ac-7). No workflow in this repository pushes a formula or a tap.
 
 - `Formula/vrai.rb.tmpl` is the formula's template. It installs the platform's `vrai` as `bin/vrai`, and `bin/vraish` as a link to it.
-- When it installs, it also links `v` to `vrai` and `vsh` to `vraish`, unless a program of that name is already on your `PATH`. In that case it prints `skipped v: <path> exists (V language?)` or `skipped vsh: <path> exists`, as vrai-cli's `install.sh` does (F-0017 @ac-3, @ac-4). It reads your `PATH` from `HOMEBREW_PATH`, because Homebrew cleans `PATH` while a formula runs. The links live in the formula's own `bin`, so `brew link` puts them in `$(brew --prefix)/bin` and `brew uninstall vrai` removes them.
+- When it installs, it also links `v` to `vrai` and `vsh` to `vraish`, unless a program of that name is already on your `PATH`. In that case it prints `skipped v: <path> exists (V language?)` or `skipped vsh: <path> exists`, as vrai-cli's `install.sh` does (F-0017 @ac-3, @ac-4). It reads your `PATH` from Homebrew's `ORIGINAL_PATHS`, because Homebrew cleans `PATH` while a formula builds. The links live in the formula's own `bin`, so `brew link` puts them in `$(brew --prefix)/bin` and `brew uninstall vrai` removes them.
 
 `scripts/render-formula.sh` writes `Formula/vrai.rb` from the template, a version, the address of the release's `vrai-<os>-<arch>` binaries, and the release's `checksums.txt`. It refuses a checksums file that lacks any darwin or linux binary:
 

@@ -35,8 +35,8 @@ class Vrai < Formula
   # vrai, and vraish, the secure shell, always (platform-topology.md §7.1, E-0015). The short
   # forms v and vsh only when no other program on the user's PATH has that name (F-0017 @ac-3,
   # @ac-4, @ac-6). They go in the keg's bin, so brew links them into HOMEBREW_PREFIX/bin and
-  # brew uninstall removes them. Homebrew cleans PATH while a formula runs, so the user's own
-  # PATH is read from HOMEBREW_PATH.
+  # brew uninstall removes them. Homebrew cleans PATH and HOMEBREW_PATH while a formula
+  # builds, so the user's own PATH is read from ORIGINAL_PATHS, as Homebrew's caveats do.
   def install
     bin.install Dir["vrai-*"].first => "vrai"
     bin.install_symlink "vrai" => "vraish"
@@ -46,7 +46,7 @@ class Vrai < Formula
 
   def short(name, target, hint)
     ours = [HOMEBREW_PREFIX/"bin"/name, opt_bin/name].map(&:to_s)
-    found = which(name, ENV.fetch("HOMEBREW_PATH", ENV.fetch("PATH", "")))
+    found = which(name, PATH.new(ORIGINAL_PATHS))
     if found && ours.exclude?(found.to_s)
       earlier = found.symlink? && File.basename(found.readlink.to_s) == target
       puts "skipped #{name}: #{found} exists#{earlier ? " (an earlier vrai install)" : hint}"
