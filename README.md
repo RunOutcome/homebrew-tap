@@ -15,12 +15,11 @@ Part of VRAI by VRAISON. See https://github.com/VRAISON/vrai-workspace for how t
       --base-url https://github.com/VRAISON/vrai-cli/releases/download/v0.0.1 \
       --checksums checksums.txt
 
-Homebrew installs formulae only from a tap, so CI's `formula` job tests a local one that exists only on the runner. It:
+Homebrew installs formulae only from a tap, so CI's `formula` job taps this checkout on the runner. It:
 1. builds `vrai` from vrai-cli `main`;
-2. renders the formula with `file://` addresses;
-3. copies it into a tap made with `brew tap-new --no-git vraison/local`;
-4. runs `brew audit --strict`;
-5. runs `brew install vraison/local/vrai` twice: once on a clean `PATH`, and once with files `v` and `vsh` on `PATH`, with `brew uninstall` between. After each install, `vrai up --native`, a login and `vrai status` must succeed (F-0017 @ac-6).
+2. renders the formula with `file://` addresses, and commits it on a branch that exists only in the runner's checkout;
+3. runs `brew tap vraison/tap "$GITHUB_WORKSPACE"`, then `brew audit --strict`;
+4. runs `brew install vraison/tap/vrai` twice: once on a clean `PATH`, and once with files `v` and `vsh` on `PATH`. Between the two, `brew uninstall vrai` and `brew cleanup --prune-prefix` leave no `vrai`, `vraish`, `v` or `vsh` link. After each install, `vrai up --native`, a login and `vrai status` must succeed (F-0017 @ac-6).
 
 ## Licensing
 
