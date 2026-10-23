@@ -135,7 +135,7 @@ jobs:
           vrai stop || true
           brew uninstall --formula vrai
           brew cleanup --prune-prefix
-          ls -la "$(brew --prefix)/bin" | grep -E ' (v|vsh|vrai|vraish) ->' || echo "no v, vsh, vrai or vraish link left in $(brew --prefix)/bin"
+          for n in v vsh vrai vraish; do if [ -L "$(brew --prefix)/bin/$n" ]; then echo "left: $(brew --prefix)/bin/$n"; else echo "gone: $(brew --prefix)/bin/$n"; fi; done
           prefix="$(brew --prefix)"
           for n in v vsh vrai vraish; do [ ! -e "$prefix/bin/$n" ] && [ ! -L "$prefix/bin/$n" ] || { echo "refused: $prefix/bin/$n is left"; exit 1; }; done
           rm -rf "$HOME/.vrai"
