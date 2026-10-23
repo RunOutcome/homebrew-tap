@@ -119,19 +119,19 @@ jobs:
           brew install vraison/local/vrai 2>&1 | tee "$RUNNER_TEMP/row1.txt"
           [ "$(readlink "$prefix/opt/vrai/bin/vraish")" = vrai ] || { echo "refused: vraish is not a link to vrai"; exit 1; }
           command -v vraish
-          grep -qx "installed $prefix/bin/v -> vrai" "$RUNNER_TEMP/row1.txt" || { echo "refused: post_install did not create v"; exit 1; }
-          grep -qx "installed $prefix/bin/vsh -> vraish" "$RUNNER_TEMP/row1.txt" || { echo "refused: post_install did not create vsh"; exit 1; }
-          [ "$(readlink "$prefix/bin/v")" = "$prefix/opt/vrai/bin/vrai" ] || { echo "refused: v is not a link to vrai"; exit 1; }
-          [ "$(readlink "$prefix/bin/vsh")" = "$prefix/opt/vrai/bin/vraish" ] || { echo "refused: vsh is not a link to vraish"; exit 1; }
+          grep -qx "installed $prefix/bin/v -> vrai" "$RUNNER_TEMP/row1.txt" || { echo "refused: the install did not create v"; exit 1; }
+          grep -qx "installed $prefix/bin/vsh -> vraish" "$RUNNER_TEMP/row1.txt" || { echo "refused: the install did not create vsh"; exit 1; }
+          [ "$(readlink "$prefix/opt/vrai/bin/v")" = vrai ] || { echo "refused: the keg's v is not a link to vrai"; exit 1; }
+          [ "$(readlink "$prefix/opt/vrai/bin/vsh")" = vraish ] || { echo "refused: the keg's vsh is not a link to vraish"; exit 1; }
+          [ "$(command -v v)" = "$prefix/bin/v" ] && [ "$(command -v vsh)" = "$prefix/bin/vsh" ] || { echo "refused: brew did not link v and vsh into $prefix/bin"; exit 1; }
           v --version
           vrai --version | grep -qx "vrai $VERSION (.*)" || { echo "refused: vrai --version is not $VERSION"; exit 1; }
       - name: "@ac-6 row 1: vrai up --native, a user and a login, vrai status"
         run: scripts/ci/up-login-status.sh "row1"
-      - name: "between the rows: brew uninstall, and the dangling v and vsh pruned"
+      - name: "between the rows: brew uninstall removes vrai, vraish, v and vsh"
         run: |
           vrai stop || true
           brew uninstall --formula vrai
-          brew cleanup --prune-prefix
           prefix="$(brew --prefix)"
           for n in v vsh vrai vraish; do [ ! -e "$prefix/bin/$n" ] && [ ! -L "$prefix/bin/$n" ] || { echo "refused: $prefix/bin/$n is left"; exit 1; }; done
           rm -rf "$HOME/.vrai"
@@ -145,7 +145,7 @@ jobs:
           brew install vraison/local/vrai 2>&1 | tee "$RUNNER_TEMP/row2.txt"
           grep -qx "skipped v: $fake/v exists (V language?)" "$RUNNER_TEMP/row2.txt" || { echo "refused: no skipped line for v"; exit 1; }
           grep -qx "skipped vsh: $fake/vsh exists" "$RUNNER_TEMP/row2.txt" || { echo "refused: no skipped line for vsh"; exit 1; }
-          for n in v vsh; do [ ! -e "$prefix/bin/$n" ] && [ ! -L "$prefix/bin/$n" ] || { echo "refused: post_install created $prefix/bin/$n"; exit 1; }; done
+          for n in v vsh; do [ ! -e "$prefix/bin/$n" ] && [ ! -L "$prefix/bin/$n" ] || { echo "refused: the install created $prefix/bin/$n"; exit 1; }; done
           [ "$(readlink "$prefix/opt/vrai/bin/vraish")" = vrai ] || { echo "refused: vraish is not a link to vrai"; exit 1; }
           [ "$(command -v v)" = "$fake/v" ] || { echo "refused: v on PATH is not the fake"; exit 1; }
       - name: "@ac-6 row 2: vrai up --native, a user and a login, vrai status"
