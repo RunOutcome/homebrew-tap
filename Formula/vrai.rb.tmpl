@@ -1,0 +1,66 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 COR Holdings, LLC
+#
+# The template for Formula/vrai.rb (F-0017-T4). scripts/render-formula.sh fills in the
+# version, the release's download address and the checksum of each binary. The rendered
+# formula is not published until the founder approves the public release (F-0017 @ac-7).
+class Vrai < Formula
+  desc "VRAI command line, with vraish, the secure shell"
+  homepage "https://github.com/VRAISON/vrai-cli"
+  version "@VERSION@"
+  license "AGPL-3.0-only"
+
+  on_macos do
+    on_arm do
+      url "@BASE_URL@/vrai-darwin-arm64"
+      sha256 "@SHA256_DARWIN_ARM64@"
+    end
+    on_intel do
+      url "@BASE_URL@/vrai-darwin-amd64"
+      sha256 "@SHA256_DARWIN_AMD64@"
+    end
+  end
+
+  on_linux do
+    on_arm do
+      url "@BASE_URL@/vrai-linux-arm64"
+      sha256 "@SHA256_LINUX_ARM64@"
+    end
+    on_intel do
+      url "@BASE_URL@/vrai-linux-amd64"
+      sha256 "@SHA256_LINUX_AMD64@"
+    end
+  end
+
+  # vrai, and vraish, the secure shell, always (platform-topology.md §7.1, E-0015).
+  def install
+    bin.install Dir["vrai-*"].first => "vrai"
+    bin.install_symlink "vrai" => "vraish"
+  end
+
+  # The short forms v and vsh, in HOMEBREW_PREFIX/bin, only when no other program on the
+  # user's PATH has that name (F-0017 @ac-3, @ac-4, @ac-6). Homebrew cleans PATH while a
+  # formula runs, so the user's own PATH is read from HOMEBREW_PATH.
+  def post_install
+    short "v", "vrai", " (V language?)"
+    short "vsh", "vraish", ""
+  end
+
+  def short(name, target, hint)
+    link = HOMEBREW_PREFIX/"bin"/name
+    found = which(name, ENV.fetch("HOMEBREW_PATH", ENV.fetch("PATH", "")))
+    if found && found.to_s != link.to_s
+      earlier = found.symlink? && File.basename(found.readlink.to_s) == target
+      puts "skipped #{name}: #{found} exists#{earlier ? " (an earlier vrai install)" : hint}"
+      return
+    end
+    link.unlink if link.symlink?
+    link.make_symlink(opt_bin/target)
+    puts "installed #{link} -> #{target}"
+  end
+
+  test do
+    assert_match "vrai #{version}", shell_output("#{bin}/vrai --version")
+    assert_equal "vrai", File.readlink(bin/"vraish")
+  end
+end
