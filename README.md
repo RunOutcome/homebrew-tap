@@ -1,6 +1,6 @@
 # homebrew-tap
 
-Part of VRAI by VRAISON. See https://github.com/VRAISON/vrai-workspace for how the repositories fit together.
+Part of Outcome by VRAISON. See https://github.com/VRAISON/outcome-workspace for how the repositories fit together.
 
 ## The vrai formula
 
@@ -27,5 +27,5 @@ homebrew-tap is licensed under the Apache License, version 2.0 (`Apache-2.0`); s
 `LICENSE`. Contributions are accepted under the same license (Apache-2.0 §5); no
 Contributor License Agreement is required.
 
-"VRAI", "VRAISON" and "Cortex server" are trademarks of COR Holdings, LLC; see
+"Outcome", "VRAISON" and "Outcome server" are trademarks of COR Holdings, LLC; see
 `TRADEMARKS.md`.

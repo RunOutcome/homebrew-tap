@@ -1,5 +1,5 @@
 # Licensed as the repository it is in (REUSE.toml annotates .github/**).
-# Template from VRAISON/vrai-workspace github/templates/ci.yml. `ci-required` is the
+# Template from VRAISON/outcome-workspace github/templates/ci.yml. `ci-required` is the
 # check named in the organization ruleset; it `needs:` every other job, so a repository
 # adds its build and test jobs and lists them there.
 name: ci
