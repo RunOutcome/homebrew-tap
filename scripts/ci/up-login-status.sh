@@ -13,7 +13,7 @@ pass="orbit $(date +%s) quiet river lantern"
 out up --native 2>&1 | tee -a "$log"
 url="$(sed -n 's/^listen *= *"\(.*\)"/http:\/\/\1/p' "$HOME/.outcome/host.toml" 2>/dev/null | head -n 1)"
 url="${url:-http://127.0.0.1:8777}"
-printf '%s\n' "$pass" | out user add "tryout-$label" --password-stdin 2>&1 | tee -a "$log"
+printf '%s\n' "$pass" | out user add "tryout-$label" --email "tryout-$label@example.com" --password-stdin 2>&1 | tee -a "$log"
 t="$(mktemp -d)"
 out login "$url" > "$t/login.log" 2>&1 &
 pid=$!

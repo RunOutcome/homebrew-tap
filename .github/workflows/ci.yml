@@ -74,6 +74,8 @@ jobs:
           git add -f Formula/out.rb
           git -c user.name=ci -c user.email=ci@localhost commit -q -m "ci: the rendered formula (runner only, never pushed)"
           brew tap runoutcome/tap "$GITHUB_WORKSPACE"
+          # Homebrew 7 refuses to load a formula from an untrusted tap; older brew has no trust
+          if brew trust --help >/dev/null 2>&1; then brew trust runoutcome/tap; fi
           sed -n '1,40p' "$(brew --repository runoutcome/tap)/Formula/out.rb"
       - name: brew audit --strict (only URL notes may be reported)
         if: env.TAG != ''
