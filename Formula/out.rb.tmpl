@@ -1,0 +1,47 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 COR Holdings, LLC
+#
+# The template for Formula/out.rb (F-0017-T4). scripts/render-formula.sh fills in the
+# version, the release's download address and the checksum of each binary. The rendered
+# formula is not published until the founder approves the public release (F-0017 @ac-7).
+class Out < Formula
+  desc "Command-line client for Outcome, with outsh, the secure shell"
+  homepage "https://github.com/VRAISON/outcome-cli"
+  version "@VERSION@"
+  license "Apache-2.0"
+
+  on_macos do
+    on_arm do
+      url "@BASE_URL@/out-darwin-arm64"
+      sha256 "@SHA256_DARWIN_ARM64@"
+    end
+    on_intel do
+      url "@BASE_URL@/out-darwin-amd64"
+      sha256 "@SHA256_DARWIN_AMD64@"
+    end
+  end
+
+  on_linux do
+    on_arm do
+      url "@BASE_URL@/out-linux-arm64"
+      sha256 "@SHA256_LINUX_ARM64@"
+    end
+    on_intel do
+      url "@BASE_URL@/out-linux-amd64"
+      sha256 "@SHA256_LINUX_AMD64@"
+    end
+  end
+
+  # out, and outsh, the secure shell (platform-topology.md §7.1, E-0015), as the
+  # outcome-cli install.sh creates them. They go in the keg's bin, so brew links them into
+  # HOMEBREW_PREFIX/bin and brew uninstall removes them.
+  def install
+    bin.install Dir["out-*"].first => "out"
+    bin.install_symlink "out" => "outsh"
+  end
+
+  test do
+    assert_match "out #{version}", shell_output("#{bin}/out --version")
+    assert_equal "out", File.readlink(bin/"outsh")
+  end
+end

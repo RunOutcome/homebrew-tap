@@ -1,5 +1,5 @@
 # Licensed as the repository it is in (REUSE.toml annotates .github/**).
-# Template from VRAISON/vrai-workspace github/templates/ci.yml. `ci-required` is the
+# Template from VRAISON/outcome-workspace github/templates/ci.yml. `ci-required` is the
 # check named in the organization ruleset; it `needs:` every other job, so a repository
 # adds its build and test jobs and lists them there.
 name: ci
@@ -33,9 +33,10 @@ jobs:
           echo "${GITLEAKS_SHA256}  gitleaks.tgz" | sha256sum -c -
           tar -xzf gitleaks.tgz gitleaks
           ./gitleaks git . --no-banner --redact
-  # F-0017-T4 (@ac-6): the formula, rendered from Formula/vrai.rb.tmpl for a vrai built from
-  # vrai-cli main, installed from this checkout tapped as vraison/tap on the runner, twice: on a clean
-  # PATH, then with files v and vsh on PATH. Nothing is published (@ac-7).
+  # F-0017-T4 (@ac-6): the formula, rendered from Formula/out.rb.tmpl for an out built from
+  # outcome-cli main, installed from this checkout tapped as vraison/tap on the runner.
+  # The v and vsh short forms are gone with the rename, so only the clean-PATH row is left.
+  # Nothing is published (@ac-7).
   formula:
     runs-on: macos-latest
     env:
@@ -47,28 +48,28 @@ jobs:
       HOMEBREW_NO_ENV_HINTS: "1"
       NO_COLOR: "1"
       VERSION: 0.0.0-formula
-      VRAI_APP_ID: ${{ secrets.VRAISON_AGENTS_APP_ID }}
+      OUTCOME_APP_ID: ${{ secrets.VRAISON_AGENTS_APP_ID }}
     steps:
       - name: refused without the App
-        if: env.VRAI_APP_ID == ''
+        if: env.OUTCOME_APP_ID == ''
         run: |
-          echo "refused: the VRAISON_AGENTS_APP_ID secret is not available here, so vrai-cli cannot be checked out"
+          echo "refused: the VRAISON_AGENTS_APP_ID secret is not available here, so outcome-cli cannot be checked out"
           exit 1
       - id: app-token
         uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
         with:
-          app-id: ${{ env.VRAI_APP_ID }}
+          app-id: ${{ env.OUTCOME_APP_ID }}
           private-key: ${{ secrets.VRAISON_AGENTS_PRIVATE_KEY }}
           owner: VRAISON
-          repositories: vrai-cli,cortex-server
+          repositories: outcome-cli,outcome-server
           permission-contents: read
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          repository: VRAISON/vrai-cli
+          repository: VRAISON/outcome-cli
           ref: main
           token: ${{ steps.app-token.outputs.token }}
-          path: vrai-cli
+          path: outcome-cli
           persist-credentials: false
       - name: git reads github.com/VRAISON through the App token
         env:
@@ -78,97 +79,62 @@ jobs:
           git config --global url."https://x-access-token:${TOKEN}@github.com/VRAISON/".insteadOf "https://github.com/VRAISON/"
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version-file: vrai-cli/go.mod
-          cache-dependency-path: vrai-cli/go.sum
-      - name: build vrai-<os>-<arch> and checksums.txt, as the release does
+          go-version-file: outcome-cli/go.mod
+          cache-dependency-path: outcome-cli/go.sum
+      - name: build out-<os>-<arch> and checksums.txt, as the release does
         env:
           CGO_ENABLED: "0"
         run: |
           out="$RUNNER_TEMP/assets"
           mkdir -p "$out"
-          pkg=github.com/VRAISON/vrai-cli/internal/version
-          commit="$(git -C vrai-cli rev-parse --short=7 HEAD)"
-          echo "vrai-cli main at $commit"
+          pkg=github.com/VRAISON/outcome-cli/internal/version
+          commit="$(git -C outcome-cli rev-parse --short=7 HEAD)"
+          echo "outcome-cli main at $commit"
           for t in darwin/arm64 darwin/amd64 linux/arm64 linux/amd64; do
-            (cd vrai-cli && GOOS="${t%/*}" GOARCH="${t#*/}" go build -trimpath \
-              -ldflags "-s -w -X $pkg.Version=$VERSION -X $pkg.Commit=$commit" -o "$out/vrai-${t%/*}-${t#*/}" ./cmd/vrai)
+            (cd outcome-cli && GOOS="${t%/*}" GOARCH="${t#*/}" go build -trimpath \
+              -ldflags "-s -w -X $pkg.Version=$VERSION -X $pkg.Commit=$commit" -o "$out/out-${t%/*}-${t#*/}" ./cmd/out)
           done
-          (cd "$out" && shasum -a 256 vrai-* > checksums.txt && cat checksums.txt)
+          (cd "$out" && shasum -a 256 out-* > checksums.txt && cat checksums.txt)
       - name: render the formula, and tap this checkout (a local tap; nothing is pushed)
         run: |
           scripts/render-formula.sh --version "$VERSION" --base-url "file://$RUNNER_TEMP/assets" --checksums "$RUNNER_TEMP/assets/checksums.txt"
           # brew tap clones a path tap, so it reads only committed files: the rendered formula is
           # committed on a branch that exists only in this runner's checkout.
           git checkout -q -b ci-rendered-formula
-          git add -f Formula/vrai.rb
+          git add -f Formula/out.rb
           git -c user.name=ci -c user.email=ci@localhost commit -q -m "ci: the rendered formula (runner only, never pushed)"
           brew tap vraison/tap "$GITHUB_WORKSPACE"
-          sed -n '1,40p' "$(brew --repository vraison/tap)/Formula/vrai.rb"
+          sed -n '1,40p' "$(brew --repository vraison/tap)/Formula/out.rb"
       - name: brew audit --strict (only the file:// URL may be reported)
         run: |
           set +e
-          brew audit --formula --strict vraison/tap/vrai > "$RUNNER_TEMP/audit.txt" 2>&1
+          brew audit --formula --strict vraison/tap/out > "$RUNNER_TEMP/audit.txt" 2>&1
           code=$?
           set -e
           cat "$RUNNER_TEMP/audit.txt"
           problems="$(grep -E '^ *\* ' "$RUNNER_TEMP/audit.txt" | grep -viE 'file://|url|https' || true)"
           if [ -n "$problems" ]; then echo "refused: brew audit reported more than the file:// URL:"; echo "$problems"; exit 1; fi
           echo "brew audit exit $code; nothing reported but the file:// URL"
-      - name: "@ac-6 row 1: a clean PATH gets vraish, v and vsh"
+      - name: "@ac-6: a clean PATH gets out and outsh"
         run: |
           prefix="$(brew --prefix)"
-          for n in v vsh; do f="$(command -v "$n" || true)"; [ -z "$f" ] || { echo "refused: $n is already on PATH at $f"; exit 1; }; done
-          brew install vraison/tap/vrai 2>&1 | tee "$RUNNER_TEMP/row1.txt"
-          [ "$(readlink "$prefix/opt/vrai/bin/vraish")" = vrai ] || { echo "refused: vraish is not a link to vrai"; exit 1; }
-          command -v vraish
-          grep -qF "installed $prefix/bin/v -> vrai" "$RUNNER_TEMP/row1.txt" || { echo "refused: the install did not create v"; exit 1; }
-          grep -qF "installed $prefix/bin/vsh -> vraish" "$RUNNER_TEMP/row1.txt" || { echo "refused: the install did not create vsh"; exit 1; }
-          [ "$(readlink "$prefix/opt/vrai/bin/v")" = vrai ] || { echo "refused: the keg's v is not a link to vrai"; exit 1; }
-          [ "$(readlink "$prefix/opt/vrai/bin/vsh")" = vraish ] || { echo "refused: the keg's vsh is not a link to vraish"; exit 1; }
-          [ "$(command -v v)" = "$prefix/bin/v" ] && [ "$(command -v vsh)" = "$prefix/bin/vsh" ] || { echo "refused: brew did not link v and vsh into $prefix/bin"; exit 1; }
-          v --version
-          vrai --version | grep -qx "vrai $VERSION (.*)" || { echo "refused: vrai --version is not $VERSION"; exit 1; }
-      - name: "@ac-6 row 1: vrai up --native, a user and a login, vrai status"
+          brew install vraison/tap/out 2>&1 | tee "$RUNNER_TEMP/row1.txt"
+          [ "$(readlink "$prefix/opt/out/bin/outsh")" = out ] || { echo "refused: outsh is not a link to out"; exit 1; }
+          command -v outsh
+          out --version | grep -qx "out $VERSION (.*)" || { echo "refused: out --version is not $VERSION"; exit 1; }
+      - name: "@ac-6: out up --native, a user and a login, out status"
         run: scripts/ci/up-login-status.sh "row1"
-      - name: "between the rows: brew uninstall and cleanup --prune-prefix leave no vrai, vraish, v or vsh"
+      - name: "brew uninstall and cleanup --prune-prefix leave no out or outsh"
         run: |
-          vrai stop || true
-          brew uninstall --formula vrai
-          brew cleanup --prune-prefix
-          for n in v vsh vrai vraish; do if [ -L "$(brew --prefix)/bin/$n" ]; then echo "left: $(brew --prefix)/bin/$n"; else echo "gone: $(brew --prefix)/bin/$n"; fi; done
-          prefix="$(brew --prefix)"
-          for n in v vsh vrai vraish; do [ ! -e "$prefix/bin/$n" ] && [ ! -L "$prefix/bin/$n" ] || { echo "refused: $prefix/bin/$n is left"; exit 1; }; done
-          rm -rf "$HOME/.vrai"
-      - name: "@ac-6 row 2: files v and vsh on PATH are left alone"
-        run: |
-          prefix="$(brew --prefix)"
-          fake="$RUNNER_TEMP/fake"
-          mkdir -p "$fake"
-          printf '#!/bin/sh\necho fake\n' > "$fake/v"; printf '#!/bin/sh\necho fake\n' > "$fake/vsh"; chmod +x "$fake/v" "$fake/vsh"
-          # their path and content, checked again after the uninstall and prune (F-0017-T22)
-          shasum -a 256 "$fake/v" "$fake/vsh" > "$RUNNER_TEMP/fake.sha256"
-          export PATH="$fake:$PATH"
-          brew install vraison/tap/vrai 2>&1 | tee "$RUNNER_TEMP/row2.txt"
-          grep -qF "skipped v: $fake/v exists (V language?)" "$RUNNER_TEMP/row2.txt" || { echo "refused: no skipped line for v"; exit 1; }
-          grep -qF "skipped vsh: $fake/vsh exists" "$RUNNER_TEMP/row2.txt" || { echo "refused: no skipped line for vsh"; exit 1; }
-          for n in v vsh; do [ ! -e "$prefix/bin/$n" ] && [ ! -L "$prefix/bin/$n" ] || { echo "refused: the install created $prefix/bin/$n"; exit 1; }; done
-          [ "$(readlink "$prefix/opt/vrai/bin/vraish")" = vrai ] || { echo "refused: vraish is not a link to vrai"; exit 1; }
-          [ "$(command -v v)" = "$fake/v" ] || { echo "refused: v on PATH is not the fake"; exit 1; }
-      - name: "@ac-6 row 2: vrai up --native, a user and a login, vrai status"
-        run: scripts/ci/up-login-status.sh "row2"
-      - name: "after row 2: brew uninstall and cleanup --prune-prefix leave no vrai, vraish, v or vsh, and the files v and vsh on PATH are untouched"
-        run: |
-          vrai stop || true
-          brew uninstall --formula vrai
+          out stop || true
+          brew uninstall --formula out
           brew cleanup --prune-prefix
           prefix="$(brew --prefix)"
-          for n in v vsh vrai vraish; do if [ -L "$prefix/bin/$n" ] || [ -e "$prefix/bin/$n" ]; then echo "left: $prefix/bin/$n"; else echo "gone: $prefix/bin/$n"; fi; done
-          for n in v vsh vrai vraish; do [ ! -e "$prefix/bin/$n" ] && [ ! -L "$prefix/bin/$n" ] || { echo "refused: $prefix/bin/$n is left"; exit 1; }; done
-          shasum -a 256 -c "$RUNNER_TEMP/fake.sha256" || { echo "refused: row 2's own v or vsh on PATH was changed or removed"; exit 1; }
-          echo "row 2's $RUNNER_TEMP/fake/v and $RUNNER_TEMP/fake/vsh: same path, same content"
+          for n in out outsh; do [ ! -e "$prefix/bin/$n" ] && [ ! -L "$prefix/bin/$n" ] || { echo "refused: $prefix/bin/$n is left"; exit 1; }; echo "gone: $prefix/bin/$n"; done
+          rm -rf "$HOME/.outcome"
       - if: always()
-        name: stop vrai
-        run: vrai stop || true
+        name: stop out
+        run: command -v out >/dev/null && out stop || true
       - if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -177,7 +143,7 @@ jobs:
             ${{ runner.temp }}/row*.txt
             ${{ runner.temp }}/audit.txt
             ${{ runner.temp }}/assets/checksums.txt
-            Formula/vrai.rb
+            Formula/out.rb
           if-no-files-found: warn
   ci-required:
     if: always()
