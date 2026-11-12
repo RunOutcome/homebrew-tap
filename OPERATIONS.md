@@ -5,8 +5,9 @@ sets them. Each line: setting, value, who set it, date. Secrets are named, never
 
 | Setting | Value | Set by | Date |
 | --- | --- | --- | --- |
-| Visibility | managed by `outcome-workspace/repos.yaml` and `scripts/github-apply.sh` | – | – |
-| Branch protection | organization ruleset `outcome-workspace/github/rulesets/main.json` | – | – |
+| Owner | RunOutcome (moved from VRAISON; adr-0058) | founder | 2026-11-12 |
+| Visibility | public | founder | 2026-11-12 |
+| Branch protection | none yet: VRAISON's organization ruleset did not move with the repository | – | – |
 
 ## Secrets
 
