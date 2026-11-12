@@ -33,98 +33,72 @@ jobs:
           echo "${GITLEAKS_SHA256}  gitleaks.tgz" | sha256sum -c -
           tar -xzf gitleaks.tgz gitleaks
           ./gitleaks git . --no-banner --redact
-  # F-0017-T4 (@ac-6): the formula, rendered from Formula/out.rb.tmpl for an out built from
-  # outcome-cli main, installed from this checkout tapped as vraison/tap on the runner.
-  # The v and vsh short forms are gone with the rename, so only the clean-PATH row is left.
+  # F-0017-T4 (@ac-6): the formula, rendered from Formula/out.rb.tmpl for the newest release
+  # in the public RunOutcome/releases (a pre-release counts), installed from this checkout
+  # tapped as runoutcome/tap on the runner. This repository is public and holds no secrets,
+  # so it tests published binaries, never the internal source (adr-0058). Before the first
+  # release there is nothing to install, and the job says so and passes.
   # Nothing is published (@ac-7).
   formula:
     runs-on: macos-latest
     env:
-      GOPRIVATE: github.com/VRAISON/*
-      GOFLAGS: -mod=mod
+      RELEASE_REPO: RunOutcome/releases
       HOMEBREW_NO_AUTO_UPDATE: "1"
       HOMEBREW_NO_INSTALL_FROM_API: "1"
       HOMEBREW_NO_ANALYTICS: "1"
       HOMEBREW_NO_ENV_HINTS: "1"
       NO_COLOR: "1"
-      VERSION: 0.0.0-formula
-      OUTCOME_APP_ID: ${{ secrets.VRAISON_AGENTS_APP_ID }}
     steps:
-      - name: refused without the App
-        if: env.OUTCOME_APP_ID == ''
-        run: |
-          echo "refused: the VRAISON_AGENTS_APP_ID secret is not available here, so outcome-cli cannot be checked out"
-          exit 1
-      - id: app-token
-        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
-        with:
-          app-id: ${{ env.OUTCOME_APP_ID }}
-          private-key: ${{ secrets.VRAISON_AGENTS_PRIVATE_KEY }}
-          owner: VRAISON
-          repositories: outcome-cli,outcome-server
-          permission-contents: read
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          repository: VRAISON/outcome-cli
-          ref: main
-          token: ${{ steps.app-token.outputs.token }}
-          path: outcome-cli
-          persist-credentials: false
-      - name: git reads github.com/VRAISON through the App token
+      - name: The newest release in RunOutcome/releases, and its checksums.txt
         env:
-          TOKEN: ${{ steps.app-token.outputs.token }}
+          # read-only, for the public repository's release list
+          GH_TOKEN: ${{ github.token }}
         run: |
-          echo "::add-mask::$TOKEN"
-          git config --global url."https://x-access-token:${TOKEN}@github.com/VRAISON/".insteadOf "https://github.com/VRAISON/"
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version-file: outcome-cli/go.mod
-          cache-dependency-path: outcome-cli/go.sum
-      - name: build out-<os>-<arch> and checksums.txt, as the release does
-        env:
-          CGO_ENABLED: "0"
-        run: |
-          out="$RUNNER_TEMP/assets"
-          mkdir -p "$out"
-          pkg=github.com/VRAISON/outcome-cli/internal/version
-          commit="$(git -C outcome-cli rev-parse --short=7 HEAD)"
-          echo "outcome-cli main at $commit"
-          for t in darwin/arm64 darwin/amd64 linux/arm64 linux/amd64; do
-            (cd outcome-cli && GOOS="${t%/*}" GOARCH="${t#*/}" go build -trimpath \
-              -ldflags "-s -w -X $pkg.Version=$VERSION -X $pkg.Commit=$commit" -o "$out/out-${t%/*}-${t#*/}" ./cmd/out)
-          done
-          (cd "$out" && shasum -a 256 out-* > checksums.txt && cat checksums.txt)
+          tag="$(gh api "repos/$RELEASE_REPO/releases?per_page=1" --jq '.[0].tag_name // empty')"
+          if [ -z "$tag" ]; then
+            echo "::notice::$RELEASE_REPO has no release yet: nothing to install, formula checks skipped"
+            exit 0
+          fi
+          mkdir -p "$RUNNER_TEMP/assets"
+          curl -fsSL -o "$RUNNER_TEMP/assets/checksums.txt" "https://github.com/$RELEASE_REPO/releases/download/$tag/checksums.txt"
+          cat "$RUNNER_TEMP/assets/checksums.txt"
+          { echo "TAG=$tag"; echo "VERSION=${tag#v}"; } >> "$GITHUB_ENV"
       - name: render the formula, and tap this checkout (a local tap; nothing is pushed)
+        if: env.TAG != ''
         run: |
-          scripts/render-formula.sh --version "$VERSION" --base-url "file://$RUNNER_TEMP/assets" --checksums "$RUNNER_TEMP/assets/checksums.txt"
+          scripts/render-formula.sh --version "$TAG" --base-url "https://github.com/$RELEASE_REPO/releases/download/$TAG" --checksums "$RUNNER_TEMP/assets/checksums.txt"
           # brew tap clones a path tap, so it reads only committed files: the rendered formula is
           # committed on a branch that exists only in this runner's checkout.
           git checkout -q -b ci-rendered-formula
           git add -f Formula/out.rb
           git -c user.name=ci -c user.email=ci@localhost commit -q -m "ci: the rendered formula (runner only, never pushed)"
-          brew tap vraison/tap "$GITHUB_WORKSPACE"
-          sed -n '1,40p' "$(brew --repository vraison/tap)/Formula/out.rb"
-      - name: brew audit --strict (only the file:// URL may be reported)
+          brew tap runoutcome/tap "$GITHUB_WORKSPACE"
+          sed -n '1,40p' "$(brew --repository runoutcome/tap)/Formula/out.rb"
+      - name: brew audit --strict (only URL notes may be reported)
+        if: env.TAG != ''
         run: |
           set +e
-          brew audit --formula --strict vraison/tap/out > "$RUNNER_TEMP/audit.txt" 2>&1
+          brew audit --formula --strict runoutcome/tap/out > "$RUNNER_TEMP/audit.txt" 2>&1
           code=$?
           set -e
           cat "$RUNNER_TEMP/audit.txt"
           problems="$(grep -E '^ *\* ' "$RUNNER_TEMP/audit.txt" | grep -viE 'file://|url|https' || true)"
-          if [ -n "$problems" ]; then echo "refused: brew audit reported more than the file:// URL:"; echo "$problems"; exit 1; fi
-          echo "brew audit exit $code; nothing reported but the file:// URL"
+          if [ -n "$problems" ]; then echo "refused: brew audit reported more than URL notes:"; echo "$problems"; exit 1; fi
+          echo "brew audit exit $code; nothing reported but URL notes"
       - name: "@ac-6: a clean PATH gets out and outsh"
+        if: env.TAG != ''
         run: |
           prefix="$(brew --prefix)"
-          brew install vraison/tap/out 2>&1 | tee "$RUNNER_TEMP/row1.txt"
+          brew install runoutcome/tap/out 2>&1 | tee "$RUNNER_TEMP/row1.txt"
           [ "$(readlink "$prefix/opt/out/bin/outsh")" = out ] || { echo "refused: outsh is not a link to out"; exit 1; }
           command -v outsh
           out --version | grep -qx "out $VERSION (.*)" || { echo "refused: out --version is not $VERSION"; exit 1; }
       - name: "@ac-6: out up --native, a user and a login, out status"
+        if: env.TAG != ''
         run: scripts/ci/up-login-status.sh "row1"
       - name: "brew uninstall and cleanup --prune-prefix leave no out or outsh"
+        if: env.TAG != ''
         run: |
           out stop || true
           brew uninstall --formula out

@@ -1,6 +1,10 @@
 # homebrew-tap
 
-Part of Outcome by VRAISON. See https://github.com/VRAISON/outcome-workspace for how the repositories fit together.
+The Homebrew tap for [Outcome](https://runoutcome.com). Once the formula is published:
+
+    brew install runoutcome/tap/out
+
+The binaries come from the public [RunOutcome/releases](https://github.com/RunOutcome/releases).
 
 ## The out formula
 
@@ -11,14 +15,14 @@ Part of Outcome by VRAISON. See https://github.com/VRAISON/outcome-workspace for
 `scripts/render-formula.sh` writes `Formula/out.rb` from the template, a version, the address of the release's `out-<os>-<arch>` binaries, and the release's `checksums.txt`. It refuses a checksums file that lacks any darwin or linux binary:
 
     scripts/render-formula.sh --version v0.0.1 \
-      --base-url https://github.com/VRAISON/outcome-cli/releases/download/v0.0.1 \
+      --base-url https://github.com/RunOutcome/releases/releases/download/v0.0.1 \
       --checksums checksums.txt
 
 Homebrew installs formulae only from a tap, so CI's `formula` job taps this checkout on the runner. It:
-1. builds `out` from outcome-cli `main`;
-2. renders the formula with `file://` addresses, and commits it on a branch that exists only in the runner's checkout;
-3. runs `brew tap vraison/tap "$GITHUB_WORKSPACE"`, then `brew audit --strict`;
-4. runs `brew install vraison/tap/out` on a clean `PATH`; then `out up --native`, a login and `out status` must succeed (F-0017 @ac-6). Afterwards `brew uninstall out` and `brew cleanup --prune-prefix` must leave no `out` or `outsh` link.
+1. takes the newest release in RunOutcome/releases, a pre-release included, and its `checksums.txt` (with no release yet, it says so and passes);
+2. renders the formula with that release's download addresses, and commits it on a branch that exists only in the runner's checkout;
+3. runs `brew tap runoutcome/tap "$GITHUB_WORKSPACE"`, then `brew audit --strict`;
+4. runs `brew install runoutcome/tap/out` on a clean `PATH`; then `out up --native`, a login and `out status` must succeed (F-0017 @ac-6). Afterwards `brew uninstall out` and `brew cleanup --prune-prefix` must leave no `out` or `outsh` link.
 
 ## Licensing
 
