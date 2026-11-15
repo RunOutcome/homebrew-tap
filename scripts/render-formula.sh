@@ -50,5 +50,13 @@ sed -e "s|@VERSION@|$version|g" -e "s|@BASE_URL@|$base|g" \
 # until the founder approves the public release (F-0017 @ac-7).' \
     "$tmpl" > "$tmp"
 if grep -q '@[A-Z0-9_]*@' "$tmp"; then rm -f "$tmp"; refuse "a placeholder was left in $out"; fi
+# Homebrew reads a plain version (0.0.2) from a release address (.../download/v0.0.2/...), and
+# brew audit --strict then refuses the `version` line as redundant. It misreads a pre-release
+# (v0.1.0-rc.1 scans as "64", from arm64), so there the line stays.
+case "$version" in *[!0-9.]*) ;; *)
+  case "$base/" in */v"$version"/*|*/"$version"/*)
+    sed '/^  version "/d' "$tmp" > "$tmp.v" && mv -f "$tmp.v" "$tmp" ;;
+  esac ;;
+esac
 mv -f "$tmp" "$out"
 echo "rendered $out: out $version from $base"
