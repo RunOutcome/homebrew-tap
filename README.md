@@ -26,7 +26,7 @@ The binaries come from the public [RunOutcome/releases](https://github.com/RunOu
 Homebrew installs formulae only from a tap, so CI's `formula` job taps this checkout on the runner. It:
 1. takes the newest release in RunOutcome/releases, a pre-release included, and its `checksums.txt` (with no release yet, it says so and passes);
 2. renders the formula with that release's download addresses, and commits it on a branch that exists only in the runner's checkout;
-3. runs `brew tap runoutcome/tap "$GITHUB_WORKSPACE"` and `brew trust runoutcome/tap`, then `brew audit --strict`;
+3. runs `brew tap runoutcome/tap "$GITHUB_WORKSPACE"` and `brew trust runoutcome/tap`, then `brew audit --strict`, which must exit 0;
 4. runs `brew install runoutcome/tap/out` on a clean `PATH`; then `out up --native`, a login and `out status` must succeed (F-0017 @ac-6). Afterwards `brew uninstall out` and `brew cleanup --prune-prefix` must leave no `out` or `outsh` link.
 
 ## Licensing

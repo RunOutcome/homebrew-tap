@@ -77,7 +77,10 @@ jobs:
           # Homebrew 7 refuses to load a formula from an untrusted tap; older brew has no trust
           if brew trust --help >/dev/null 2>&1; then brew trust runoutcome/tap; fi
           sed -n '1,40p' "$(brew --repository runoutcome/tap)/Formula/out.rb"
-      - name: brew audit --strict (only URL notes may be reported)
+      # The formula is rendered with the release's own https addresses, so a clean audit
+      # exits 0. Any problem fails, even one whose text mentions "URL": before this, a
+      # filter let "version … is redundant with version scanned from URL" (exit 1) pass.
+      - name: brew audit --strict (must exit 0)
         if: env.TAG != ''
         run: |
           set +e
@@ -85,9 +88,8 @@ jobs:
           code=$?
           set -e
           cat "$RUNNER_TEMP/audit.txt"
-          problems="$(grep -E '^ *\* ' "$RUNNER_TEMP/audit.txt" | grep -viE 'file://|url|https' || true)"
-          if [ -n "$problems" ]; then echo "refused: brew audit reported more than URL notes:"; echo "$problems"; exit 1; fi
-          echo "brew audit exit $code; nothing reported but URL notes"
+          if [ "$code" -ne 0 ]; then echo "refused: brew audit --strict exit $code"; exit 1; fi
+          echo "brew audit exit 0; nothing reported"
       - name: "@ac-6: a clean PATH gets out and outsh"
         if: env.TAG != ''
         run: |
